@@ -1,8 +1,11 @@
 #pragma once
-//#include <>
+#include <queue>
 
 class FCFS {
+	//Ideas:
+	// 
 
+public:
 	FCFS() {
 
 	}
@@ -10,4 +13,7 @@ class FCFS {
 	void doInsertProcess() {
 		// 
 	}
+
+private:
+	queue<int> readyQ;
 };
