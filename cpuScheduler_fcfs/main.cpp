@@ -3,8 +3,6 @@
 
 #include <iostream>
 #include <string>
-#include <queue>
-#include <vector>
 #include <list>
 #include "Process.h"
 
@@ -23,7 +21,7 @@ void updateProcesses(int);
 bool processes_done(list<Process>&, list<Process>&);
 
 void PrintFinalReport(list<Process>&, int, int);
-void  PrintContextSwitch(list<Process>&, list<Process>&, list<Process>&, int );
+void PrintContextSwitch(list<Process>&, list<Process>&, list<Process>&, int );
 
 int main() 
 {
@@ -41,15 +39,15 @@ int main()
 	load_readyQueue(jobQ, readyQ);					// State: Start processes
 
 	int time = 0;
-	int cpuTime = 0;
-	int ioTime = 0;
+	int cpuTime = 1;
+	int ioTime = 1;
 
 	// >>> CPU loop <<<
 	// CPU loop stops when all CPU bursts and I/O bursts are finished
 
 	PrintContextSwitch(readyQ, ioQ, doneQ, time);
 
-	while /*(time < 800)*/ (!processes_done(readyQ, ioQ))			//Important cycles : 139, 600, 650
+	while (!processes_done(readyQ, ioQ))	/*(time < 649)*/		//Important cycles : 139, 600, 650
 	{
 
 		// State: Start New Process
@@ -65,6 +63,7 @@ int main()
 		// State: Run Process
 		if (!readyQ.empty())		// Something is in the Ready Queue
 		{
+			
 			if (readyQ.front().bursts.front())
 			{
 				--readyQ.front().bursts.front();			// CPU cycle
@@ -78,7 +77,11 @@ int main()
 					readyQ.front().processMode = 3;
 
 					doneQ.push_back(readyQ.front());
-					readyQ.pop_front();		
+
+					readyQ.pop_front();	
+
+					if (readyQ.empty())
+						readyQ.clear();
 
 					PrintContextSwitch(readyQ, ioQ, doneQ, time);
 				}
@@ -88,12 +91,19 @@ int main()
 					readyQ.front().bursts.pop();				// Delete CPU burst from process' burst queue
 					readyQ.front().processMode = 1;				// Switch process mode to I/O
 
+
 					ioQ.push_back(readyQ.front());		// Send to I/O queue
 					readyQ.pop_front();
 
 					PrintContextSwitch(readyQ, ioQ, doneQ, time);
 				}
+				if (!readyQ.empty())
+				{
+					readyQ.front().runTime++;
 
+					for (list<Process>::iterator iReady = ++readyQ.begin(); iReady != readyQ.end(); iReady++)
+						iReady->waitTime++;
+				}
 				cpuTime++;
 			}
 		}
@@ -118,19 +128,21 @@ int main()
 						itrIOQ->bursts.pop();
 						itrIOQ->processMode = 0;
 
-						if (!readyQ.empty() && itrIOQ != ioQ.end()) {
+						//if (!readyQ.empty() && itrIOQ != ioQ.end()) {
 						readyQ.push_back(*itrIOQ);
 						itrIOQ = ioQ.erase(itrIOQ);
-					}
-						else
-							cout << "EMPTY Ready Queue\n\n";
+					//}
+						//else
+							//cout << "EMPTY Ready Queue\n\n";
 
 						PrintContextSwitch(readyQ, ioQ, doneQ, time);
 					}
-
-					++itrIOQ;
+					else
+						++itrIOQ;
 				}
 
+				for (list<Process>::iterator iIO = ioQ.begin(); iIO != ioQ.end(); iIO++)
+					iIO->ioTime++;
 				ioTime++;
 			//}
 		}
@@ -138,7 +150,8 @@ int main()
 		
 	}
 
-	//PrintFinalReport(jobQ, time, cpuTime);
+	PrintFinalReport(doneQ, time, cpuTime);
+	system("color 70");
 
 	return 0;
 }
@@ -198,33 +211,42 @@ bool processes_done(list<Process>& readyQueue, list<Process>& ioQueue) {
 		{return true;}
 	else										// Buns still in the oven
 		{return false;}
+
+	return true;
 }
 
 //****** Calculation & Printer Functions **************
 
 void PrintFinalReport(list<Process>& lp, int totalTime, int cpuTime)
 {
-	cout << "\nFinal Report for CPU Scheduler\n\n";
+	cout << "\n\nFinal Report for CPU Scheduler\n\n";
 
 	cout << "Total Run Time: " << totalTime << "\n\n";
 
+
+	float cpuUtil = 0.0;
+	cpuUtil = cpuTime / totalTime;
+
 	// CPU utilization
-	cout << "CPU Utilization: " << cpuTime / totalTime << "\n\n";
+	cout << "CPU Utilization: " << cpuUtil << "\n\n";
 		// sum of actual work time / total time		
+
 
 
 
 	// waiting time for each process + avg wait
 	cout << "Wait Times: \n" ;		// time spent waiting in ready state
 
-	int waitTotal=0;
+	float waitTotal = 0.0;
 	for (list<Process>::iterator i = lp.begin(); i != lp.end(); i++)
 	{
-		cout << "P" << i->procID << ": " << i->waitTime;
+		cout << "P" << i->procID << " waittime: " << i->waitTime << endl;
 		waitTotal += i->waitTime;
 	}
 
 	cout << "Wait Time Avg (Tw): " << waitTotal / 8 << "\n\n";
+
+
 
 
 	// turnaround time each + avg
@@ -241,15 +263,21 @@ void PrintFinalReport(list<Process>& lp, int totalTime, int cpuTime)
 		// time of admit to time of completion (endTime - startTime)
 		// sum of periods spent waiting, in ready queue, I/O, CPU
 
+
+
+
 	cout << "Response Times: \n";
 
-	int respTotal = 0;
+	float respTotal = 0;
 	for (list<Process>::iterator i = lp.begin(); i != lp.end(); i++)
 	{
 		cout << "P" << i->procID << ": " << i->startTime <<endl;
 		respTotal += i->startTime;
 	}
 	cout << "Response Avg: " << respTotal / 8 << "\n\n";
+
+
+
 
 }
 
